@@ -40,7 +40,7 @@
             cidr_ip: "{{ MYIP }}"
       register: BastionSG_out
 
-    - name: Creating Bastion Host
+        - name: Creating Bastion Host
       amazon.aws.ec2_instance:
         key_name: vprofile-key
         region: "{{ region }}"
@@ -48,20 +48,22 @@
         image_id: "{{ bastion_ami }}"
         wait: true
         wait_timeout: 300
+        exact_count: 1
+        filters:
+          "tag:Name": "Bastion_host"
+          "tag:Project": "Vprofile"
         tags:
           Name: "Bastion_host"
           Project: Vprofile
           Owner: DevOps Team
-        exact_count: 1
-        count_tag:
-          Name: "Bastion_host"
-          Project: Vprofile
-          Owner: DevOps Team
-        security_group_ids:
-          - "{{ BastionSG_out.group_id }}"
-        subnet_id: "{{ pubsub1id }}"
+        network:
+          assign_public_ip: true
+          vpc_subnet_id: "{{ pubsub1id }}"
+          security_groups:
+            - "{{ BastionSG_out.group_id }}"
       register: bastionHost_out
 
     - name: Show Bastion Host public IP
       debug:
         msg: "Bastion Host public IP: {{ bastionHost_out.instances[0].public_ip_address }}"
+

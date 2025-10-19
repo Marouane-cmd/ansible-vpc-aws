@@ -1,4 +1,3 @@
----
 - name: Setup Vprofile Stack
   hosts: localhost
   connection: local
@@ -9,26 +8,26 @@
 
     - name: Import vprofile setup Variable
       include_vars: vars/vprostacksetup
-    
+
     - name: Create vprofile ec2 key
       ec2_key:
         name: vprokey
-        region: "{{region}}"
+        region: "{{ region }}"
       register: vprokey_out
 
     - name: Save private key into file loginkey_vpro.pem
       copy:
-        content: "{{vprokey_out.key.private_key}}"
+        content: "{{ vprokey_out.key.private_key }}"
         dest: "./loginkey_vpro.pem"
         mode: 0600
       when: vprokey_out.changed
-    
-    - name: Create Securiry Group for Load Balancer
+
+    - name: Create Security Group for Load Balancer
       ec2_group:
         name: vproELB-sg
         description: Allow port 80 from everywhere and all port within sg
-        region: "{{region}}"
-        vpc_id: "{{vpcid}}"
+        region: "{{ region }}"
+        vpc_id: "{{ vpcid }}"
         rules:
           - proto: tcp
             from_port: 80
@@ -36,139 +35,144 @@
             cidr_ip: 0.0.0.0/0
       register: vproELBSG_out
 
-    - name: Create Securiry Group for Vprofile Stack
+    - name: Create Security Group for Vprofile Stack
       ec2_group:
         name: vproStack-sg
         description: Allow port 22 from everywhere and all port within sg
-        region: "{{region}}"
-        vpc_id: "{{vpcid}}"
+        region: "{{ region }}"
+        vpc_id: "{{ vpcid }}"
         purge_rules: no
         rules:
           - proto: tcp
             from_port: 80
             to_port: 80
-            group_id: "{{vproELBSG_out.group_id}}"
+            group_id: "{{ vproELBSG_out.group_id }}"
 
           - proto: tcp
             from_port: 22
             to_port: 22
-            group_id: "{{BastionSGid}}"
+            group_id: "{{ BastionSGid }}"
       register: vproStackSG_out
-    
-    - name: Update Securiry Group with its own sg id
+
+    - name: Update Security Group with its own sg id
       ec2_group:
         name: vproStack-sg
         description: Allow port 22 from everywhere and all port within sg
-        region: "{{region}}"
-        vpc_id: "{{vpcid}}"
+        region: "{{ region }}"
+        vpc_id: "{{ vpcid }}"
         purge_rules: no
         rules:
           - proto: all
-            group_id: "{{vproStackSG_out.group_id}}"
-    
+            group_id: "{{ vproStackSG_out.group_id }}"
+
     - name: Creating Nginx web01
-      ec2:
+      amazon.aws.ec2_instance:
         key_name: vprokey
-        region: "{{region}}"
+        region: "{{ region }}"
         instance_type: t2.micro
-        image: "{{nginx_ami}}"
-        wait: yes
+        image_id: "{{ nginx_ami }}"
+        wait: true
         wait_timeout: 300
-        instance_tags:
-          Name: "web01"
-          Project: Vprofile
-          Owner: DevOps Team
         exact_count: 1
-        count_tag:
+        filters:
+          "tag:Name": "web01"
+          "tag:Project": "Vprofile"
+        tags:
           Name: "web01"
           Project: Vprofile
           Owner: DevOps Team
-        group_id: "{{vproStackSG_out.group_id}}"
-        vpc_subnet_id: "{{privsub1id}}"
+        network:
+          vpc_subnet_id: "{{ privsub1id }}"
+          security_groups:
+            - "{{ vproStackSG_out.group_id }}"
       register: web01_out
-    
+
     - name: Creating tomcat app01
-      ec2:
+      amazon.aws.ec2_instance:
         key_name: vprokey
-        region: "{{region}}"
+        region: "{{ region }}"
         instance_type: t2.micro
-        image: "{{tomcat_ami}}"
-        wait: yes
+        image_id: "{{ tomcat_ami }}"
+        wait: true
         wait_timeout: 300
-        instance_tags:
-          Name: "app01"
-          Project: Vprofile
-          Owner: DevOps Team
         exact_count: 1
-        count_tag:
+        filters:
+          "tag:Name": "app01"
+          "tag:Project": "Vprofile"
+        tags:
           Name: "app01"
           Project: Vprofile
           Owner: DevOps Team
-        group_id: "{{vproStackSG_out.group_id}}"
-        vpc_subnet_id: "{{privsub1id}}"
+        network:
+          vpc_subnet_id: "{{ privsub1id }}"
+          security_groups:
+            - "{{ vproStackSG_out.group_id }}"
       register: app01_out
 
     - name: Creating memcache mc01
-      ec2:
+      amazon.aws.ec2_instance:
         key_name: vprokey
-        region: "{{region}}"
+        region: "{{ region }}"
         instance_type: t2.micro
-        image: "{{memcache_ami}}"
-        wait: yes
+        image_id: "{{ memcache_ami }}"
+        wait: true
         wait_timeout: 300
-        instance_tags:
-          Name: "mc01"
-          Project: Vprofile
-          Owner: DevOps Team
         exact_count: 1
-        count_tag:
+        filters:
+          "tag:Name": "mc01"
+          "tag:Project": "Vprofile"
+        tags:
           Name: "mc01"
           Project: Vprofile
           Owner: DevOps Team
-        group_id: "{{vproStackSG_out.group_id}}"
-        vpc_subnet_id: "{{privsub1id}}"
+        network:
+          vpc_subnet_id: "{{ privsub1id }}"
+          security_groups:
+            - "{{ vproStackSG_out.group_id }}"
       register: mc01_out
 
     - name: Creating RabbitMQ rmq01
-      ec2:
+      amazon.aws.ec2_instance:
         key_name: vprokey
-        region: "{{region}}"
+        region: "{{ region }}"
         instance_type: t2.micro
-        image: "{{rmq_ami}}"
-        wait: yes
+        image_id: "{{ rmq_ami }}"
+        wait: true
         wait_timeout: 300
-        instance_tags:
-          Name: "rmq01"
-          Project: Vprofile
-          Owner: DevOps Team
         exact_count: 1
-        count_tag:
+        filters:
+          "tag:Name": "rmq01"
+          "tag:Project": "Vprofile"
+        tags:
           Name: "rmq01"
           Project: Vprofile
           Owner: DevOps Team
-        group_id: "{{vproStackSG_out.group_id}}"
-        vpc_subnet_id: "{{privsub1id}}"
+        network:
+          vpc_subnet_id: "{{ privsub1id }}"
+          security_groups:
+            - "{{ vproStackSG_out.group_id }}"
       register: rmq01_out
 
     - name: Creating Mysql db01
-      ec2:
+      amazon.aws.ec2_instance:
         key_name: vprokey
-        region: "{{region}}"
+        region: "{{ region }}"
         instance_type: t2.micro
-        image: "{{mysql_ami}}"
-        wait: yes
+        image_id: "{{ mysql_ami }}"
+        wait: true
         wait_timeout: 300
-        instance_tags:
-          Name: "db01"
-          Project: Vprofile
-          Owner: DevOps Team
         exact_count: 1
-        count_tag:
+        filters:
+          "tag:Name": "db01"
+          "tag:Project": "Vprofile"
+        tags:
           Name: "db01"
           Project: Vprofile
           Owner: DevOps Team
-        group_id: "{{vproStackSG_out.group_id}}"
-        vpc_subnet_id: "{{privsub1id}}"
+        network:
+          vpc_subnet_id: "{{ privsub1id }}"
+          security_groups:
+            - "{{ vproStackSG_out.group_id }}"
       register: db01_out
 
     - debug:

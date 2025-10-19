@@ -178,13 +178,13 @@
     - debug:
         var: db01_out.tagged_instances[0].id
     
-    - local_action:
+        - local_action:
         module: ec2_elb_lb
         name: "vprofile-elb"
-        region: "{{region}}"
+        region: "{{ region }}"
         state: present
         instance_ids:
-          - "{{ web01_out.tagged_instances[0].id }}"
+          - "{{ web01_out.instances[0].instance_id }}"
         purge_instance_ids: true
         security_group_ids: "{{ vproELBSG_out.group_id }}"
         subnets:
@@ -192,10 +192,11 @@
           - "{{ pubsub2id }}"
           - "{{ pubsub3id }}"
         listeners:
-          - protocol: http # options are http, https, ssl, tcp
+          - protocol: http
             load_balancer_port: 80
             instance_port: 80
-    
+
+  
     - name: Insert/Update Hosts IP & Name in file provision-stack/group_vars/hostsip
       blockinfile:
         path: provision-stack/group_vars/hostsip
